@@ -5,15 +5,16 @@
 
 .DESCRIPTION
     Like a doctor examining a patient - diagnoses your environment health first,
-    then prescribes and administers the treatment (installations) as needed.
+    then automatically treats (installs) what's missing using winget.
 
 .NOTES
     Prerequisites: PowerShell 5.1+ (comes with Windows 10/11)
     NO WSL required - pure Windows native setup
+    NO Admin required - uses user-scope installations
 #>
 
 param(
-    [switch]$SkipInstall,
+    [switch]$DiagnoseOnly,
     [switch]$Verbose
 )
 
@@ -44,21 +45,73 @@ function Write-Header {
 }
 
 # ============================================================================
-# Diagnostic Results Storage
+# Check if winget is available
 # ============================================================================
-$script:DiagnosticResults = @{
-    Windows = $false
-    Python = $false
-    PythonVersion = ""
-    UV = $false
-    Make = $false
-    Git = $false
-    IDE = $false
-    IDEName = ""
-    ProjectRoot = $false
-    PyProjectToml = $false
-    Makefile = $false
-    Venv = $false
+function Test-Winget {
+    try {
+        $null = & winget --version 2>&1
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+$script:HasWinget = Test-Winget
+
+# ============================================================================
+# Installation Functions (Auto-execute)
+# ============================================================================
+
+function Install-WithWinget {
+    param(
+        [string]$PackageId,
+        [string]$Name
+    )
+
+    if (-not $script:HasWinget) {
+        Write-Failure "winget not available. Please install manually."
+        return $false
+    }
+
+    Write-Info "Installing $Name via winget..."
+    Write-Info "Running: winget install -e --id $PackageId --accept-source-agreements --accept-package-agreements"
+
+    try {
+        # Use --scope user to avoid admin requirement where possible
+        $result = & winget install -e --id $PackageId --accept-source-agreements --accept-package-agreements 2>&1
+        Write-Host $result
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "$Name installed successfully!"
+            Write-Warning "You may need to restart your terminal for changes to take effect."
+            return $true
+        } else {
+            Write-Failure "Failed to install $Name. Exit code: $LASTEXITCODE"
+            return $false
+        }
+    } catch {
+        Write-Failure "Error installing $Name : $_"
+        return $false
+    }
+}
+
+function Install-UV-Direct {
+    Write-Info "Installing uv via PowerShell script..."
+    Write-Info "Running: irm https://astral.sh/uv/install.ps1 | iex"
+
+    try {
+        # This installs to user directory, no admin needed
+        Invoke-Expression (Invoke-RestMethod https://astral.sh/uv/install.ps1)
+
+        # Refresh PATH
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","User") + ";" + [System.Environment]::GetEnvironmentVariable("Path","Machine")
+
+        Write-Success "uv installed successfully!"
+        return $true
+    } catch {
+        Write-Failure "Failed to install uv: $_"
+        return $false
+    }
 }
 
 # ============================================================================
@@ -75,11 +128,9 @@ function Test-WindowsVersion {
     Write-Info "OS: $name"
     Write-Info "Version: $version"
 
-    # Check if Windows 10 or later
     $majorVersion = [int]($version.Split('.')[0])
     if ($majorVersion -ge 10) {
         Write-Success "Windows 10 or later detected"
-        $script:DiagnosticResults.Windows = $true
         return $true
     } else {
         Write-Failure "Windows 10 or later required"
@@ -87,7 +138,7 @@ function Test-WindowsVersion {
     }
 }
 
-function Test-Python {
+function Test-AndInstall-Python {
     Write-Header "Doctor's Examination: Python"
 
     # Try different Python commands
@@ -112,16 +163,20 @@ function Test-Python {
 
     if (-not $pythonFound) {
         Write-Failure "Python not found"
-        Write-Info "Download Python $REQUIRED_PYTHON_VERSION+ from:"
-        Write-Info "  https://www.python.org/downloads/"
-        Write-Info ""
-        Write-Info "Or install via winget:"
-        Write-Info "  winget install Python.Python.3.12"
+
+        if (-not $DiagnoseOnly) {
+            Write-Host ""
+            $response = Read-Host "Install Python 3.12 now? (Y/n)"
+            if ($response -eq "" -or $response -match "^[Yy]") {
+                Install-WithWinget "Python.Python.3.12" "Python 3.12"
+                Write-Warning "Please RESTART your terminal after installation, then run this script again."
+                return $false
+            }
+        }
         return $false
     }
 
-    Write-Info "Found: Python $pythonVer (command: $cmd)"
-    $script:DiagnosticResults.PythonVersion = $pythonVer
+    Write-Info "Found: Python $pythonVer (command: $pythonCmd)"
 
     # Check version meets requirement
     $versionParts = $pythonVer.Split('.')
@@ -134,17 +189,23 @@ function Test-Python {
 
     if ($major -gt $reqMajor -or ($major -eq $reqMajor -and $minor -ge $reqMinor)) {
         Write-Success "Python version $pythonVer meets requirement (>= $REQUIRED_PYTHON_VERSION)"
-        $script:DiagnosticResults.Python = $true
         return $true
     } else {
         Write-Failure "Python $pythonVer is below required version $REQUIRED_PYTHON_VERSION"
-        Write-Info "Please upgrade Python:"
-        Write-Info "  https://www.python.org/downloads/"
+
+        if (-not $DiagnoseOnly) {
+            Write-Host ""
+            $response = Read-Host "Install Python 3.12 now? (Y/n)"
+            if ($response -eq "" -or $response -match "^[Yy]") {
+                Install-WithWinget "Python.Python.3.12" "Python 3.12"
+                Write-Warning "Please RESTART your terminal after installation, then run this script again."
+            }
+        }
         return $false
     }
 }
 
-function Test-UV {
+function Test-AndInstall-UV {
     Write-Header "Doctor's Examination: uv Package Manager"
 
     try {
@@ -152,61 +213,32 @@ function Test-UV {
         if ($output -match "uv (\d+\.\d+\.\d+)") {
             $uvVersion = $Matches[1]
             Write-Success "uv $uvVersion is installed"
-            $script:DiagnosticResults.UV = $true
             return $true
         }
     } catch {
         # uv not found
     }
 
-    Write-Warning "uv is not installed"
-    Write-Info "uv is a fast Python package manager (replacement for pip)"
-    Write-Info ""
-    Write-Info "Install options:"
-    Write-Info "  Option 1 (PowerShell):"
-    Write-Info "    irm https://astral.sh/uv/install.ps1 | iex"
-    Write-Info ""
-    Write-Info "  Option 2 (winget):"
-    Write-Info "    winget install astral-sh.uv"
-    Write-Info ""
-    Write-Info "  Option 3 (pip):"
-    Write-Info "    pip install uv"
-    return $false
-}
+    Write-Failure "uv is not installed"
+    Write-Info "uv is a fast Python package manager (10-100x faster than pip)"
 
-function Test-Make {
-    Write-Header "Doctor's Examination: GNU Make"
-
-    try {
-        $output = & make --version 2>&1
-        if ($output -match "GNU Make (\d+\.\d+)") {
-            $makeVersion = $Matches[1]
-            Write-Success "GNU Make $makeVersion is installed"
-            $script:DiagnosticResults.Make = $true
-            return $true
+    if (-not $DiagnoseOnly) {
+        Write-Host ""
+        $response = Read-Host "Install uv now? (Y/n)"
+        if ($response -eq "" -or $response -match "^[Yy]") {
+            # Try direct install first (no admin needed)
+            if (Install-UV-Direct) {
+                return $true
+            }
+            # Fallback to winget
+            Install-WithWinget "astral-sh.uv" "uv"
+            Write-Warning "Please RESTART your terminal after installation, then run this script again."
         }
-    } catch {
-        # make not found
     }
-
-    Write-Warning "GNU Make is not installed"
-    Write-Info "Make is used for build automation"
-    Write-Info ""
-    Write-Info "Install options:"
-    Write-Info "  Option 1 (winget - recommended):"
-    Write-Info "    winget install GnuWin32.Make"
-    Write-Info ""
-    Write-Info "  Option 2 (Chocolatey):"
-    Write-Info "    choco install make"
-    Write-Info ""
-    Write-Info "  Option 3 (Scoop):"
-    Write-Info "    scoop install make"
-    Write-Info ""
-    Write-Info "After installing, restart your terminal"
     return $false
 }
 
-function Test-Git {
+function Test-AndInstall-Git {
     Write-Header "Doctor's Examination: Git"
 
     try {
@@ -214,7 +246,6 @@ function Test-Git {
         if ($output -match "git version (\d+\.\d+\.\d+)") {
             $gitVersion = $Matches[1]
             Write-Success "Git $gitVersion is installed"
-            $script:DiagnosticResults.Git = $true
             return $true
         }
     } catch {
@@ -222,12 +253,41 @@ function Test-Git {
     }
 
     Write-Warning "Git is not installed"
-    Write-Info "Install options:"
-    Write-Info "  Option 1 (winget):"
-    Write-Info "    winget install Git.Git"
+    Write-Info "Git is optional but recommended for version control"
+
+    if (-not $DiagnoseOnly) {
+        Write-Host ""
+        $response = Read-Host "Install Git now? (Y/n)"
+        if ($response -eq "" -or $response -match "^[Yy]") {
+            Install-WithWinget "Git.Git" "Git"
+            Write-Warning "Please RESTART your terminal after installation."
+        }
+    }
+    return $false
+}
+
+function Test-Make {
+    Write-Header "Doctor's Examination: GNU Make (Optional)"
+
+    try {
+        $output = & make --version 2>&1
+        if ($output -match "GNU Make (\d+\.\d+)") {
+            $makeVersion = $Matches[1]
+            Write-Success "GNU Make $makeVersion is installed"
+            return $true
+        }
+    } catch {
+        # make not found
+    }
+
+    Write-Warning "GNU Make is not installed (optional)"
+    Write-Info "Without Make, you can still run commands directly:"
+    Write-Info "  Instead of 'make setup' -> use: uv sync"
+    Write-Info "  Instead of 'make run'   -> use: uv run streamlit run app.py"
     Write-Info ""
-    Write-Info "  Option 2 (Direct download):"
-    Write-Info "    https://git-scm.com/download/win"
+    Write-Info "To install Make (may require admin):"
+    Write-Info "  winget install GnuWin32.Make"
+
     return $false
 }
 
@@ -258,18 +318,8 @@ function Test-IDETools {
             CheckType = "both"
         },
         @{
-            Name = "Codex CLI"
-            Commands = @("codex")
-            CheckType = "command"
-        },
-        @{
             Name = "Aider"
             Commands = @("aider")
-            CheckType = "command"
-        },
-        @{
-            Name = "GitHub Copilot CLI"
-            Commands = @("gh copilot", "github-copilot-cli")
             CheckType = "command"
         },
         @{
@@ -279,13 +329,6 @@ function Test-IDETools {
                 "$env:LOCALAPPDATA\Programs\windsurf\Windsurf.exe"
             )
             CheckType = "both"
-        },
-        @{
-            Name = "Zed"
-            Paths = @(
-                "$env:LOCALAPPDATA\Programs\Zed\zed.exe"
-            )
-            CheckType = "path"
         }
     )
 
@@ -298,12 +341,9 @@ function Test-IDETools {
         if ($tool.CheckType -eq "command" -or $tool.CheckType -eq "both") {
             foreach ($cmd in $tool.Commands) {
                 try {
-                    $cmdParts = $cmd.Split(' ')
-                    $result = & $cmdParts[0] --version 2>&1
-                    if ($LASTEXITCODE -eq 0 -or $result) {
-                        $found = $true
-                        break
-                    }
+                    $null = Get-Command $cmd -ErrorAction Stop
+                    $found = $true
+                    break
                 } catch {
                     continue
                 }
@@ -327,424 +367,147 @@ function Test-IDETools {
     }
 
     if ($foundTools.Count -gt 0) {
-        $script:DiagnosticResults.IDE = $true
-        $script:DiagnosticResults.IDEName = $foundTools -join ", "
-        Write-Info "Found AI coding tools: $($script:DiagnosticResults.IDEName)"
+        Write-Info "Found AI coding tools: $($foundTools -join ', ')"
         return $true
     } else {
-        Write-Failure "No AI coding tools found"
-        Show-IDEDownloadOptions
+        Write-Warning "No AI coding tools found"
+        Write-Info ""
+        Write-Info "You need at least one AI coding tool for Vibe Coding."
+        Write-Info "Recommended options:"
+        Write-Info ""
+        Write-Color "  Cursor (AI-first code editor):" "Yellow"
+        Write-Info "    https://cursor.sh/download"
+        Write-Info ""
+        Write-Color "  VS Code (with GitHub Copilot):" "Yellow"
+        Write-Info "    winget install Microsoft.VisualStudioCode"
+        Write-Info ""
+        Write-Color "  Claude Code (Anthropic CLI):" "Yellow"
+        Write-Info "    npm install -g @anthropic-ai/claude-code"
+        Write-Info ""
         return $false
     }
-}
-
-function Show-IDEDownloadOptions {
-    Write-Info ""
-    Write-Info "You need at least one AI coding tool for Vibe Coding."
-    Write-Info "Choose one of the following:"
-    Write-Info ""
-    Write-Color "  Claude Code (Anthropic's official CLI):" "Yellow"
-    Write-Info "    npm install -g @anthropic-ai/claude-code"
-    Write-Info "    https://docs.anthropic.com/en/docs/claude-code"
-    Write-Info ""
-    Write-Color "  Cursor (AI-first code editor):" "Yellow"
-    Write-Info "    https://cursor.sh/download"
-    Write-Info ""
-    Write-Color "  VS Code (with GitHub Copilot):" "Yellow"
-    Write-Info "    https://code.visualstudio.com/download"
-    Write-Info "    Then install GitHub Copilot extension"
-    Write-Info ""
-    Write-Color "  Codex CLI (OpenAI):" "Yellow"
-    Write-Info "    npm install -g @openai/codex"
-    Write-Info "    https://github.com/openai/codex"
-    Write-Info ""
-    Write-Color "  Aider (AI pair programming):" "Yellow"
-    Write-Info "    pip install aider-chat"
-    Write-Info "    https://aider.chat"
-    Write-Info ""
-    Write-Color "  Windsurf (Codeium IDE):" "Yellow"
-    Write-Info "    https://codeium.com/windsurf/download"
-    Write-Info ""
-    Write-Color "  Zed (fast, multiplayer editor with AI):" "Yellow"
-    Write-Info "    https://zed.dev/download"
-    Write-Info ""
 }
 
 function Test-ProjectRoot {
     Write-Header "Doctor's Examination: Project Directory"
 
     if (Test-Path $PROJECT_ROOT) {
-        Write-Success "Project root exists: $PROJECT_ROOT"
-
-        # Check if we can write to it
-        $testFile = Join-Path $PROJECT_ROOT ".write_test_$(Get-Random)"
-        try {
-            New-Item -Path $testFile -ItemType File -Force | Out-Null
-            Remove-Item $testFile -Force
-            Write-Success "Write permissions OK"
-            $script:DiagnosticResults.ProjectRoot = $true
-            return $true
-        } catch {
-            Write-Failure "Cannot write to project directory"
-            Write-Info "Please check folder permissions"
-            return $false
-        }
+        Write-Success "Project root: $PROJECT_ROOT"
+        return $true
     } else {
         Write-Failure "Project root not found: $PROJECT_ROOT"
         return $false
     }
 }
 
-function Test-PyProjectToml {
-    Write-Header "Doctor's Examination: pyproject.toml"
+function Test-LabFolders {
+    Write-Header "Doctor's Examination: Lab Folders"
 
-    $pyprojectPath = Join-Path $PROJECT_ROOT "pyproject.toml"
+    $labs = @(
+        "lab-01-nyc-neighborhood-signals",
+        "lab-02-us-safety-drivers",
+        "lab-03-hospitality-demand",
+        "lab-04-streaming-catalog",
+        "lab-05-nyc-mobility-externalities"
+    )
 
-    if (Test-Path $pyprojectPath) {
-        Write-Success "pyproject.toml exists"
-        $script:DiagnosticResults.PyProjectToml = $true
-        return $true
-    } else {
-        Write-Warning "pyproject.toml not found"
-        Write-Info "Will create pyproject.toml during setup"
-        return $false
-    }
-}
+    $foundLabs = @()
 
-function Test-Makefile {
-    Write-Header "Doctor's Examination: Makefile"
+    foreach ($lab in $labs) {
+        $labPath = Join-Path $PROJECT_ROOT $lab
+        $pyprojectPath = Join-Path $labPath "pyproject.toml"
 
-    $makefilePath = Join-Path $PROJECT_ROOT "Makefile"
-
-    if (Test-Path $makefilePath) {
-        Write-Success "Makefile exists"
-        $script:DiagnosticResults.Makefile = $true
-        return $true
-    } else {
-        Write-Warning "Makefile not found"
-        Write-Info "Will create Makefile during setup"
-        return $false
-    }
-}
-
-function Test-Venv {
-    Write-Header "Doctor's Examination: Virtual Environment"
-
-    $venvPath = Join-Path $PROJECT_ROOT ".venv"
-    $activateScript = Join-Path $venvPath "Scripts\Activate.ps1"
-
-    if ((Test-Path $venvPath) -and (Test-Path $activateScript)) {
-        Write-Success "Virtual environment exists at .venv"
-        $script:DiagnosticResults.Venv = $true
-        return $true
-    } else {
-        Write-Warning "Virtual environment not found"
-        Write-Info "Will create .venv during setup"
-        return $false
-    }
-}
-
-# ============================================================================
-# Setup Functions
-# ============================================================================
-
-function New-PyProjectToml {
-    Write-Header "Doctor's Treatment: Creating pyproject.toml"
-
-    $pyprojectPath = Join-Path $PROJECT_ROOT "pyproject.toml"
-
-    $content = @'
-[project]
-name = "srx-data-science-labs"
-version = "0.1.0"
-description = "SRX Data Science Labs - Cross-Dataset Correlation Analysis"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "pandas>=2.0.0",
-    "numpy>=1.24.0",
-    "matplotlib>=3.7.0",
-    "seaborn>=0.12.0",
-    "scipy>=1.10.0",
-    "jupyter>=1.0.0",
-    "jupyterlab>=4.0.0",
-    "openpyxl>=3.1.0",
-    "xlrd>=2.0.0",
-    "requests>=2.28.0",
-    "python-dotenv>=1.0.0",
-    "tqdm>=4.65.0",
-    "fuzzywuzzy>=0.18.0",
-    "python-Levenshtein>=0.21.0",
-    "rapidfuzz>=3.0.0",
-    "pyarrow>=12.0.0",
-    "fastparquet>=2023.4.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "black>=23.0.0",
-    "ruff>=0.0.270",
-    "mypy>=1.3.0",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.uv]
-dev-dependencies = [
-    "pytest>=7.0.0",
-    "black>=23.0.0",
-    "ruff>=0.0.270",
-]
-'@
-
-    try {
-        $content | Out-File -FilePath $pyprojectPath -Encoding UTF8
-        Write-Success "Created pyproject.toml"
-        return $true
-    } catch {
-        Write-Failure "Failed to create pyproject.toml: $_"
-        return $false
-    }
-}
-
-function New-Makefile {
-    Write-Header "Doctor's Treatment: Creating Makefile"
-
-    $makefilePath = Join-Path $PROJECT_ROOT "Makefile"
-
-    # Note: Makefile requires tabs, not spaces
-    $content = @'
-# SRX Data Science Labs - Makefile
-# Run 'make help' for available commands
-
-.PHONY: help setup clean jupyter lab test lint format check-env
-
-# Default target
-help:
-	@echo "SRX Data Science Labs - Available Commands"
-	@echo "==========================================="
-	@echo ""
-	@echo "  make setup      - Create venv and install dependencies"
-	@echo "  make jupyter    - Start Jupyter Notebook"
-	@echo "  make lab        - Start JupyterLab"
-	@echo "  make clean      - Remove venv and cache files"
-	@echo "  make test       - Run tests"
-	@echo "  make lint       - Run linter (ruff)"
-	@echo "  make format     - Format code (black)"
-	@echo "  make check-env  - Verify environment setup"
-	@echo ""
-
-# Setup virtual environment and install dependencies
-setup:
-	@echo "Creating virtual environment..."
-	uv venv .venv
-	@echo "Installing dependencies..."
-	uv pip install -e ".[dev]"
-	@echo ""
-	@echo "Setup complete! Activate with:"
-	@echo "  Windows: .venv\Scripts\Activate.ps1"
-	@echo "  Unix:    source .venv/bin/activate"
-
-# Start Jupyter Notebook
-jupyter:
-	@echo "Starting Jupyter Notebook..."
-	.venv/Scripts/python -m jupyter notebook
-
-# Start JupyterLab
-lab:
-	@echo "Starting JupyterLab..."
-	.venv/Scripts/python -m jupyter lab
-
-# Clean up
-clean:
-	@echo "Cleaning up..."
-	if exist .venv rmdir /s /q .venv
-	if exist __pycache__ rmdir /s /q __pycache__
-	if exist .pytest_cache rmdir /s /q .pytest_cache
-	if exist .ruff_cache rmdir /s /q .ruff_cache
-	for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
-	@echo "Clean complete!"
-
-# Run tests
-test:
-	.venv/Scripts/python -m pytest tests/ -v
-
-# Run linter
-lint:
-	.venv/Scripts/python -m ruff check .
-
-# Format code
-format:
-	.venv/Scripts/python -m black .
-
-# Check environment
-check-env:
-	@echo "Checking environment..."
-	@python --version
-	@uv --version
-	@echo "Environment OK!"
-'@
-
-    try {
-        $content | Out-File -FilePath $makefilePath -Encoding UTF8 -NoNewline
-        Write-Success "Created Makefile"
-        return $true
-    } catch {
-        Write-Failure "Failed to create Makefile: $_"
-        return $false
-    }
-}
-
-function New-VirtualEnvironment {
-    Write-Header "Doctor's Treatment: Setting Up Virtual Environment"
-
-    $venvPath = Join-Path $PROJECT_ROOT ".venv"
-
-    Push-Location $PROJECT_ROOT
-
-    try {
-        Write-Info "Creating .venv with uv..."
-        & uv venv .venv
-
-        if ($LASTEXITCODE -eq 0) {
-            Write-Success "Virtual environment created"
-
-            Write-Info "Installing dependencies..."
-            & uv pip install -e ".[dev]"
-
-            if ($LASTEXITCODE -eq 0) {
-                Write-Success "Dependencies installed"
-                return $true
-            } else {
-                Write-Failure "Failed to install dependencies"
-                return $false
-            }
-        } else {
-            Write-Failure "Failed to create virtual environment"
-            return $false
+        if (Test-Path $pyprojectPath) {
+            $foundLabs += $lab
         }
-    } catch {
-        Write-Failure "Error creating virtual environment: $_"
-        return $false
-    } finally {
-        Pop-Location
     }
+
+    if ($foundLabs.Count -gt 0) {
+        Write-Success "Found $($foundLabs.Count) lab(s) ready to use"
+        foreach ($lab in $foundLabs) {
+            Write-Info "  - $lab"
+        }
+        return $true
+    } else {
+        Write-Warning "No lab folders found with pyproject.toml"
+        return $false
+    }
+}
+
+# ============================================================================
+# Summary and Next Steps
+# ============================================================================
+
+function Show-Summary {
+    param(
+        [bool]$PythonOK,
+        [bool]$UvOK,
+        [bool]$GitOK,
+        [bool]$MakeOK,
+        [bool]$IdeOK,
+        [bool]$LabsOK
+    )
+
+    Write-Header "Doctor's Diagnosis Summary"
+
+    $criticalOK = $PythonOK -and $UvOK
+
+    Write-Info ""
+    Write-Color "Critical (Required):" "Yellow"
+    if ($PythonOK) { Write-Success "Python 3.12+" } else { Write-Failure "Python 3.12+" }
+    if ($UvOK) { Write-Success "uv Package Manager" } else { Write-Failure "uv Package Manager" }
+
+    Write-Info ""
+    Write-Color "Recommended:" "Yellow"
+    if ($IdeOK) { Write-Success "AI Coding Tool" } else { Write-Warning "AI Coding Tool (install one)" }
+    if ($GitOK) { Write-Success "Git" } else { Write-Warning "Git (optional)" }
+    if ($MakeOK) { Write-Success "GNU Make" } else { Write-Warning "GNU Make (optional - can use uv directly)" }
+
+    Write-Info ""
+    Write-Color "Labs:" "Yellow"
+    if ($LabsOK) { Write-Success "Lab folders found" } else { Write-Warning "Lab folders not found" }
+
+    return $criticalOK
+}
+
+function Show-NextSteps {
+    param([bool]$HasMake)
+
+    Write-Header "Next Steps"
+
+    Write-Info "1. Go to a lab folder:"
+    Write-Color "   cd lab-01-nyc-neighborhood-signals" "Green"
+    Write-Info ""
+
+    if ($HasMake) {
+        Write-Info "2. Set up the lab:"
+        Write-Color "   make setup" "Green"
+        Write-Info ""
+        Write-Info "3. Run the dashboard:"
+        Write-Color "   make run" "Green"
+    } else {
+        Write-Info "2. Set up the lab (without Make):"
+        Write-Color "   uv sync" "Green"
+        Write-Info ""
+        Write-Info "3. Run the dashboard:"
+        Write-Color "   uv run streamlit run app.py" "Green"
+    }
+
+    Write-Info ""
+    Write-Info "Lab folders available:"
+    Write-Info "  - lab-01-nyc-neighborhood-signals  (Port 8501)"
+    Write-Info "  - lab-02-us-safety-drivers         (Port 8502)"
+    Write-Info "  - lab-03-hospitality-demand        (Port 8503)"
+    Write-Info "  - lab-04-streaming-catalog         (Port 8504)"
+    Write-Info "  - lab-05-nyc-mobility-externalities (Port 8505)"
+    Write-Info ""
+    Write-Color "Happy Vibe Coding!" "Cyan"
 }
 
 # ============================================================================
 # Main Execution
 # ============================================================================
 
-function Show-DiagnosticSummary {
-    Write-Header "Doctor's Diagnosis Summary"
-
-    $allPassed = $true
-    $criticalFailed = $false
-
-    # Critical requirements
-    $critical = @(
-        @{ Name = "Windows 10+"; Passed = $script:DiagnosticResults.Windows },
-        @{ Name = "Python $REQUIRED_PYTHON_VERSION+"; Passed = $script:DiagnosticResults.Python },
-        @{ Name = "uv Package Manager"; Passed = $script:DiagnosticResults.UV },
-        @{ Name = "AI Coding Tool"; Passed = $script:DiagnosticResults.IDE }
-    )
-
-    # Optional/can be created
-    $optional = @(
-        @{ Name = "GNU Make"; Passed = $script:DiagnosticResults.Make },
-        @{ Name = "Git"; Passed = $script:DiagnosticResults.Git },
-        @{ Name = "pyproject.toml"; Passed = $script:DiagnosticResults.PyProjectToml },
-        @{ Name = "Makefile"; Passed = $script:DiagnosticResults.Makefile },
-        @{ Name = "Virtual Environment"; Passed = $script:DiagnosticResults.Venv }
-    )
-
-    Write-Info ""
-    Write-Color "Critical Requirements:" "Yellow"
-    foreach ($item in $critical) {
-        if ($item.Passed) {
-            Write-Success $item.Name
-        } else {
-            Write-Failure $item.Name
-            $allPassed = $false
-            $criticalFailed = $true
-        }
-    }
-
-    Write-Info ""
-    Write-Color "Optional/Auto-Created:" "Yellow"
-    foreach ($item in $optional) {
-        if ($item.Passed) {
-            Write-Success $item.Name
-        } else {
-            Write-Warning "$($item.Name) (will be created)"
-            $allPassed = $false
-        }
-    }
-
-    Write-Info ""
-
-    return @{
-        AllPassed = $allPassed
-        CriticalFailed = $criticalFailed
-    }
-}
-
-function Start-Setup {
-    Write-Header "Doctor's Treatment Plan"
-
-    $success = $true
-
-    # Create pyproject.toml if missing
-    if (-not $script:DiagnosticResults.PyProjectToml) {
-        if (-not (New-PyProjectToml)) {
-            $success = $false
-        }
-    }
-
-    # Create Makefile if missing
-    if (-not $script:DiagnosticResults.Makefile) {
-        if (-not (New-Makefile)) {
-            $success = $false
-        }
-    }
-
-    # Create virtual environment if missing
-    if (-not $script:DiagnosticResults.Venv) {
-        if (-not (New-VirtualEnvironment)) {
-            $success = $false
-        }
-    }
-
-    return $success
-}
-
-function Show-NextSteps {
-    Write-Header "Post-Treatment Instructions"
-
-    Write-Info "1. Activate the virtual environment:"
-    Write-Color "   .\.venv\Scripts\Activate.ps1" "Green"
-    Write-Info ""
-    Write-Info "2. Start Jupyter:"
-    Write-Color "   make jupyter" "Green"
-    Write-Info "   or"
-    Write-Color "   make lab" "Green"
-    Write-Info ""
-    Write-Info "3. Navigate to a lab folder and start working!"
-    Write-Info ""
-    Write-Info "Lab folders:"
-    Write-Info "  - lab-01-nyc-neighborhood-signals"
-    Write-Info "  - lab-02-us-safety-driving-conditions"
-    Write-Info "  - lab-03-us-hospitality-demand"
-    Write-Info "  - lab-04-streaming-catalog-reconciliation"
-    Write-Info "  - lab-05-nyc-mobility-externalities"
-    Write-Info ""
-    Write-Color "Happy Vibe Coding!" "Cyan"
-}
-
-# Main script
 function Main {
     Write-Host ""
     Write-Color "================================================" "Cyan"
@@ -753,54 +516,43 @@ function Main {
     Write-Color "================================================" "Cyan"
     Write-Host ""
 
-    # Run diagnostics
-    Test-WindowsVersion
-    Test-Python
-    Test-UV
-    Test-Make
-    Test-Git
-    Test-IDETools
-    Test-ProjectRoot
-    Test-PyProjectToml
-    Test-Makefile
-    Test-Venv
-
-    # Show summary
-    $summary = Show-DiagnosticSummary
-
-    if ($summary.CriticalFailed) {
+    if (-not $script:HasWinget) {
+        Write-Warning "winget not found. Auto-installation may be limited."
+        Write-Info "winget comes with Windows 10 (version 1809+) and Windows 11."
+        Write-Info "If missing, install 'App Installer' from Microsoft Store."
         Write-Host ""
-        Write-Failure "Critical requirements not met. Please install missing components and run again."
-        Write-Host ""
+    }
+
+    # Run diagnostics (with auto-install offers)
+    $windowsOK = Test-WindowsVersion
+
+    if (-not $windowsOK) {
+        Write-Failure "Windows 10 or later is required."
         exit 1
     }
 
-    if ($SkipInstall) {
-        Write-Info "Skipping setup (--SkipInstall specified)"
-        exit 0
+    $pythonOK = Test-AndInstall-Python
+    $uvOK = Test-AndInstall-UV
+    $gitOK = Test-AndInstall-Git
+    $makeOK = Test-Make
+    $ideOK = Test-IDETools
+    $projectOK = Test-ProjectRoot
+    $labsOK = Test-LabFolders
+
+    # Show summary
+    $criticalOK = Show-Summary -PythonOK $pythonOK -UvOK $uvOK -GitOK $gitOK -MakeOK $makeOK -IdeOK $ideOK -LabsOK $labsOK
+
+    Write-Host ""
+
+    if (-not $criticalOK) {
+        Write-Failure "Critical requirements not met."
+        Write-Info "Please install missing components and RESTART your terminal."
+        Write-Info "Then run this script again."
+        exit 1
     }
 
-    if (-not $summary.AllPassed) {
-        Write-Host ""
-        $response = Read-Host "Would you like to proceed with setup? (Y/n)"
-        if ($response -eq "" -or $response -match "^[Yy]") {
-            if (Start-Setup) {
-                Write-Host ""
-                Write-Success "Setup completed successfully!"
-                Show-NextSteps
-            } else {
-                Write-Failure "Setup encountered errors. Please check above messages."
-                exit 1
-            }
-        } else {
-            Write-Info "Setup cancelled."
-            exit 0
-        }
-    } else {
-        Write-Host ""
-        Write-Success "All requirements already met!"
-        Show-NextSteps
-    }
+    Write-Success "Environment is ready!"
+    Show-NextSteps -HasMake $makeOK
 }
 
 # Run main

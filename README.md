@@ -2,11 +2,49 @@
 
 ## 🚀 Quick Start (Read This First!)
 
-Before doing anything else, you need to check if your computer has the right tools installed. We have a **"Doctor" script** that checks everything for you.
+Before doing anything else, run the **"Doctor" script** to check and install what you need.
 
 ---
 
 ## Step 1: Run the Environment Doctor
+
+### 🪟 For Windows Users
+
+**1. Open PowerShell**
+- Press the `Windows` key on your keyboard
+- Type `PowerShell`
+- Click on **"Windows PowerShell"** (the blue icon, NOT Command Prompt)
+
+**2. Navigate to this folder**
+
+In File Explorer, find the `labs` folder you downloaded, then:
+- Click on the **address bar** at the top (where it shows the folder path)
+- The path will be highlighted - press `Ctrl + C` to copy it
+- In PowerShell, type `cd ` (with a space after it)
+- Right-click to paste the path
+- Press `Enter`
+
+Example (your path will be different):
+```powershell
+cd C:\Users\YourName\Downloads\labs
+```
+
+**3. Run the Doctor**
+
+Copy and paste this command, then press `Enter`:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
+```
+
+**4. The Doctor will automatically:**
+- Check what's missing (Python, uv, Git)
+- Ask you to install each missing item (just press `Enter` or type `Y`)
+- Install it for you using winget
+- Tell you to restart your terminal if needed
+
+> **Note:** After installations, you need to **close and reopen PowerShell**, then run the Doctor again.
+
+---
 
 ### 🍎 For Mac Users
 
@@ -48,64 +86,19 @@ Copy and paste this command, then press `Enter`:
 
 ---
 
-### 🪟 For Windows Users
-
-**1. Open PowerShell**
-- Press the `Windows` key on your keyboard
-- Type `PowerShell`
-- Click on **"Windows PowerShell"** (NOT Command Prompt)
-
-**2. Navigate to this folder**
-
-In File Explorer, locate the `labs` folder, then:
-- Click on the address bar at the top (where it shows the folder path)
-- The path will be highlighted - press `Ctrl + C` to copy it
-- In PowerShell, type `cd ` (with a space after it)
-- Right-click to paste the path
-- Press `Enter`
-
-Example (your path will be different):
-```powershell
-cd C:\Users\YourName\Documents\labs
-```
-
-**3. Run the Doctor**
-
-Copy and paste this command, then press `Enter`:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
-```
-
-> **⚠️ Getting "script not digitally signed" error?**
->
-> Windows blocks unsigned scripts by default. The command above uses `-ExecutionPolicy Bypass` to run this specific script safely.
->
-> **Alternative:** If you want to permanently allow scripts (so you don't need Bypass every time):
-> ```powershell
-> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-> ```
-> Then you can run: `.\scripts\windows-setup.ps1`
-
-**4. Follow the prompts**
-- The Doctor will check your system
-- If something is missing, it will tell you what to install
-- Say `Y` (yes) when asked to proceed
-
----
-
 ## What the Doctor Checks
 
 The Doctor script examines your computer like a health checkup:
 
-| Check | What It Means |
-|-------|---------------|
-| ✅ Python 3.12+ | Programming language we use |
-| ✅ uv | Fast package installer |
-| ✅ make | Build automation tool |
-| ✅ git | Version control (already have if you cloned this) |
-| ✅ AI Coding Tool | Claude Code, Cursor, VS Code, etc. |
+| Check | Required? | What It Does |
+|-------|-----------|--------------|
+| ✅ Python 3.12+ | **Yes** | Programming language (auto-installs via winget) |
+| ✅ uv | **Yes** | Fast package installer (auto-installs) |
+| ⚪ Git | Optional | Version control |
+| ⚪ GNU Make | Optional | Build automation (can use `uv` directly instead) |
+| ⚪ AI Coding Tool | Recommended | Claude Code, Cursor, VS Code, etc. |
 
-If any check fails, the Doctor will show you exactly how to fix it.
+**The Doctor auto-installs** Python and uv when missing. Just press `Y` when prompted!
 
 ---
 
@@ -113,16 +106,18 @@ If any check fails, the Doctor will show you exactly how to fix it.
 
 Once the Doctor says you're healthy, go into any lab folder and set it up:
 
-**Mac:**
-```bash
+```powershell
 cd lab-01-nyc-neighborhood-signals
+```
+
+**If you have Make:**
+```
 make setup
 ```
 
-**Windows (PowerShell):**
-```powershell
-cd lab-01-nyc-neighborhood-signals
-make setup
+**If you don't have Make (Windows without admin):**
+```
+uv sync
 ```
 
 This creates a virtual environment and installs all dependencies.
@@ -133,13 +128,13 @@ This creates a virtual environment and installs all dependencies.
 
 Each lab has these commands:
 
-| Command | What It Does |
-|---------|--------------|
-| `make setup` | Install everything (run once) |
-| `make run` | Start the Streamlit dashboard |
-| `make download` | Download datasets from Kaggle |
-| `make pipeline` | Run data processing scripts |
-| `make help` | Show all available commands |
+| With Make | Without Make (uv directly) | What It Does |
+|-----------|---------------------------|--------------|
+| `make setup` | `uv sync` | Install everything (run once) |
+| `make run` | `uv run streamlit run app.py` | Start the Streamlit dashboard |
+| `make download` | `uv run python scripts/download.py` | Download datasets from Kaggle |
+| `make pipeline` | `uv run python scripts/pipeline.py` | Run data processing scripts |
+| `make help` | - | Show all available commands |
 
 ---
 
@@ -234,32 +229,33 @@ These labs use **"Vibe Coding"** - you describe what you want in plain English, 
 
 ### Common Issues
 
-**"command not found: make"**
-- Mac: Run `xcode-select --install`
-- Windows: Run `winget install GnuWin32.Make`
+**"script not digitally signed" on Windows**
+
+Use the Bypass command (already included in instructions above):
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
+```
+
+**"command not found: make" on Windows**
+
+No worries! Make is optional. Use `uv` commands directly:
+```powershell
+uv sync                              # instead of: make setup
+uv run streamlit run app.py          # instead of: make run
+```
 
 **"permission denied" on Mac**
 ```bash
 chmod +x ./scripts/macos-setup.sh
 ```
 
-**"script not digitally signed" or "execution disabled" on Windows**
+**"Python installed but not found" after installation**
 
-Use Bypass mode (recommended - runs just this script):
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
-```
-
-Or permanently allow scripts for your user:
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
+Close your terminal completely and reopen it. Then run the Doctor again.
 
 **"kaggle: command not found"**
-- Make sure you ran `make setup` in the lab folder first
-- Activate the virtual environment:
-  - Mac: `source .venv/bin/activate`
-  - Windows: `.venv\Scripts\Activate.ps1`
+- Make sure you ran `make setup` (or `uv sync`) in the lab folder first
+- Then use: `uv run kaggle ...` instead of just `kaggle ...`
 
 ### Documentation
 
