@@ -8,7 +8,10 @@ Welcome to the SRX Data Science Labs repository! This teaching repository helps 
 - Data cleansing and quality assessment
 - Analytics and exploratory data analysis
 - Machine learning correlation techniques
-- Streamlit visualization (applied in separate boilerplate repo)
+- **Data visualization** with matplotlib and seaborn
+- Consultant-level presentation and storytelling
+
+**End Goal**: Every lab produces **visualizations** (charts) and **insights** (executive summary) - not just code.
 
 ## Learning Path
 
@@ -128,20 +131,26 @@ Begin with [Lab 1: NYC Neighborhood Signals](./lab-01-nyc-neighborhood-signals/R
 
 ## Lab Progression Philosophy
 
-The labs are designed with progressive complexity:
+The labs are designed with progressive complexity following **consultant mindset** (from our playbook):
 
-1. **Lab 1** introduces core concepts with straightforward geographic standardization
-2. **Lab 2** adds complexity with multi-level geographic hierarchies and temporal features
-3. **Lab 3** focuses on calendar-based analysis and cancellation prediction
-4. **Lab 4** teaches advanced string matching and entity resolution
-5. **Lab 5** tackles high-volume data processing and performance optimization
+1. **Lab 1** - Foundation: Geographic joins + "So What" thinking
+2. **Lab 2** - Intermediate: Temporal features + business impact translation
+3. **Lab 3** - Application: Calendar analysis + actionable recommendations
+4. **Lab 4** - Advanced: Fuzzy matching + data enrichment storytelling
+5. **Lab 5** - Scale: High-volume data + performance-conscious delivery
 
-Each lab follows a consistent workflow:
-1. **Data Exploration** - Understand your datasets
-2. **Standardization** - Clean and normalize
-3. **Aggregation** - Summarize to consistent grain
-4. **Joining** - Combine datasets with validation
-5. **Correlation Analysis** - Find relationships and interpret results
+**Each lab produces 3 deliverables:**
+1. **Data Outputs** (CSVs in `data/processed/`)
+2. **Visualizations** (Charts in `visualizations/`)
+3. **Insights** (Executive summary in `findings/`)
+
+**Consistent workflow (aligned with consulting process):**
+1. **Explore** → Understand the data
+2. **Standardize** → Clean for consistent grain
+3. **Aggregate** → Summarize to business-relevant level
+4. **Join** → Combine with validation
+5. **Analyze & Visualize** → Create charts that answer "So What"
+6. **Present** → Write executive summary with recommendations
 
 ## Support Resources
 

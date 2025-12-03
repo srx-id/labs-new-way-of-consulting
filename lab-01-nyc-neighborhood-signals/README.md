@@ -17,13 +17,29 @@ By completing this lab, you will:
 
 ## Business Context
 
-You've been asked to analyze how neighborhood characteristics correlate with Airbnb pricing and guest satisfaction in New York City. This type of location intelligence analysis is common in real estate, hospitality, and urban planning consulting.
+**Client Scenario**: A hospitality investment firm is evaluating NYC neighborhoods for Airbnb property acquisitions. They need data-driven insights on what drives pricing and guest demand.
 
-**Key Business Questions**:
-1. Do neighborhoods with more 311 complaints (quality of life issues) have different Airbnb prices?
-2. Is crime rate associated with review frequency or pricing?
-3. How does weather seasonality affect guest activity?
-4. Are these relationships causal, or are there confounding factors?
+**Your Role**: Consultant analyzing correlation between neighborhood quality signals and Airbnb performance.
+
+### The "So What" Question
+
+**Client asks**: "What neighborhood characteristics should we consider when pricing and selecting properties?"
+
+**Your deliverable**: Evidence-based answer showing which factors (complaints, crime, weather) correlate with price and review activity, with clear business implications.
+
+### Key Business Questions
+
+1. **Pricing Strategy**: Do neighborhoods with more 311 complaints command lower prices? (Quality of life impact)
+2. **Safety Premium**: Is there a "safety premium" where low-crime areas charge more?
+3. **Seasonality**: How much does weather drive demand patterns? (Revenue forecasting)
+4. **Investment Criteria**: Which metrics should be weighted in neighborhood selection?
+
+### What Good Looks Like (Client Expectation)
+
+- Clear correlation strength: "Crime rate shows moderate negative correlation (r = -0.52) with average price"
+- Business translation: "Every 10% increase in crime is associated with ~5% lower nightly rates"
+- Actionable insight: "Prioritize neighborhoods with crime rates below 50 incidents/month for premium positioning"
+- Confidence level: "Statistically significant (p < 0.01) across all 5 boroughs"
 
 ## Datasets
 
@@ -104,6 +120,25 @@ You've been asked to analyze how neighborhood characteristics correlate with Air
 | `total_precip` | Float | Sum of precipitation | `df.groupby(...).agg({'PRCP': 'sum'})` |
 
 **Expected Output**: 60 rows (5 boroughs × 12 months)
+
+## Deliverables
+
+Your final deliverable package for the client includes:
+
+### 1. Data Outputs (CSV)
+- `data/processed/final_dataset.csv` - Clean, joined dataset (60 rows)
+- `data/processed/correlation_insights.csv` - Key findings with business interpretation
+
+### 2. Visualizations (PNG/PDF)
+- `visualizations/correlation_heatmap.png` - Pearson & Spearman comparison
+- `visualizations/price_vs_crime_scatter.png` - Borough-colored scatter plot
+- `visualizations/seasonality_trends.png` - Monthly patterns by metric
+- `visualizations/borough_comparison.png` - Small multiples by borough
+
+### 3. Consultant Brief (Markdown)
+- `findings/executive_summary.md` - 1-page brief answering "So What"
+
+**Visualization Principle** (from playbook): Every chart must answer a business question. No chart for chart's sake.
 
 ## Exercises
 
