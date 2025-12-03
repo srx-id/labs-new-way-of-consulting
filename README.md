@@ -1,220 +1,315 @@
 # SRX Data Science Labs: Cross-Dataset Correlation Analysis
 
+## 🚀 Quick Start (Read This First!)
+
+Before doing anything else, you need to check if your computer has the right tools installed. We have a **"Doctor" script** that checks everything for you.
+
+---
+
+## Step 1: Run the Environment Doctor
+
+### 🍎 For Mac Users
+
+**1. Open Terminal**
+- Press `Command + Space` on your keyboard
+- Type `Terminal`
+- Press `Enter` (a black/white window will open)
+
+**2. Navigate to this folder**
+
+In Finder, locate the `labs` folder, then:
+- Right-click on the `labs` folder
+- Hold `Option` key → Click **"Copy 'labs' as Pathname"**
+- In Terminal, type `cd ` (with a space after it)
+- Press `Command + V` to paste the path
+- Press `Enter`
+
+Example (your path will be different):
+```bash
+cd /Users/yourname/Documents/labs
+```
+
+**3. Run the Doctor**
+
+Copy and paste this command, then press `Enter`:
+```bash
+./scripts/macos-setup.sh
+```
+
+> If you get "permission denied", run this first, then try again:
+> ```bash
+> chmod +x ./scripts/macos-setup.sh
+> ```
+
+**4. Follow the prompts**
+- The Doctor will check your system
+- If something is missing, it will tell you what to install
+- Say `y` (yes) when asked to install missing items
+
+---
+
+### 🪟 For Windows Users
+
+**1. Open PowerShell**
+- Press the `Windows` key on your keyboard
+- Type `PowerShell`
+- Click on **"Windows PowerShell"** (NOT Command Prompt)
+
+**2. Navigate to this folder**
+
+In File Explorer, locate the `labs` folder, then:
+- Click on the address bar at the top (where it shows the folder path)
+- The path will be highlighted - press `Ctrl + C` to copy it
+- In PowerShell, type `cd ` (with a space after it)
+- Right-click to paste the path
+- Press `Enter`
+
+Example (your path will be different):
+```powershell
+cd C:\Users\YourName\Documents\labs
+```
+
+**3. Run the Doctor**
+
+Copy and paste this command, then press `Enter`:
+```powershell
+.\scripts\windows-setup.ps1
+```
+
+> If you get a "script execution" error, run this first:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
+> Then try the Doctor command again.
+
+**4. Follow the prompts**
+- The Doctor will check your system
+- If something is missing, it will tell you what to install
+- Say `Y` (yes) when asked to proceed
+
+---
+
+## What the Doctor Checks
+
+The Doctor script examines your computer like a health checkup:
+
+| Check | What It Means |
+|-------|---------------|
+| ✅ Python 3.12+ | Programming language we use |
+| ✅ uv | Fast package installer |
+| ✅ make | Build automation tool |
+| ✅ git | Version control (already have if you cloned this) |
+| ✅ AI Coding Tool | Claude Code, Cursor, VS Code, etc. |
+
+If any check fails, the Doctor will show you exactly how to fix it.
+
+---
+
+## Step 2: Set Up a Lab
+
+Once the Doctor says you're healthy, go into any lab folder and set it up:
+
+**Mac:**
+```bash
+cd lab-01-nyc-neighborhood-signals
+make setup
+```
+
+**Windows (PowerShell):**
+```powershell
+cd lab-01-nyc-neighborhood-signals
+make setup
+```
+
+This creates a virtual environment and installs all dependencies.
+
+---
+
+## Step 3: Start Working
+
+Each lab has these commands:
+
+| Command | What It Does |
+|---------|--------------|
+| `make setup` | Install everything (run once) |
+| `make run` | Start the Streamlit dashboard |
+| `make download` | Download datasets from Kaggle |
+| `make pipeline` | Run data processing scripts |
+| `make help` | Show all available commands |
+
+---
+
 ## Overview
 
-Welcome to the SRX Data Science Labs repository! This teaching repository helps non-engineer team members master essential data science skills through 5 hands-on labs using real-world datasets.
+Welcome to the SRX Data Science Labs! This teaching repository helps non-engineer team members master essential data science skills through 5 hands-on labs using real-world datasets.
 
-**Skills You'll Learn:**
+**What You'll Learn:**
 - Data cleansing and quality assessment
 - Analytics and exploratory data analysis
-- Machine learning correlation techniques
-- **Data visualization** with matplotlib and seaborn
+- Correlation analysis techniques
+- Data visualization with Streamlit and Plotly
 - Consultant-level presentation and storytelling
 
 **End Goal**: Every lab produces **visualizations** (charts) and **insights** (executive summary) - not just code.
 
-## Learning Path
+---
 
-| Lab | Focus Area | Datasets | Join Type | Difficulty |
-|-----|-----------|----------|-----------|-----------|
-| [Lab 1: NYC Neighborhood Signals](./lab-01-nyc-neighborhood-signals/) | Geographic Joins | 4 datasets | Borough/Zip | ⭐⭐ |
-| [Lab 2: US Safety Drivers](./lab-02-us-safety-drivers/) | Time + Location | 4 datasets | County/Day | ⭐⭐⭐ |
-| [Lab 3: Hospitality Demand](./lab-03-hospitality-demand/) | Calendar Joins | 3 datasets | Arrival Date | ⭐⭐ |
-| [Lab 4: Streaming Catalog](./lab-04-streaming-catalog/) | Fuzzy Matching | 3 datasets | Title/Year | ⭐⭐⭐⭐ |
-| [Lab 5: NYC Mobility Externalities](./lab-05-nyc-mobility-externalities/) | High Volume | 3 datasets | Borough/Hour | ⭐⭐⭐⭐ |
+## The 5 Labs
+
+| Lab | Focus Area | What You'll Build |
+|-----|-----------|-------------------|
+| [Lab 1: NYC Neighborhood Signals](./lab-01-nyc-neighborhood-signals/) | Geographic Joins | Airbnb + Crime + Weather correlation dashboard |
+| [Lab 2: US Safety Drivers](./lab-02-us-safety-drivers/) | Time + Location | Accident severity analysis with weather |
+| [Lab 3: Hospitality Demand](./lab-03-hospitality-demand/) | Calendar Joins | Hotel booking patterns and cancellation drivers |
+| [Lab 4: Streaming Catalog](./lab-04-streaming-catalog/) | Fuzzy Matching | Cross-platform content reconciliation |
+| [Lab 5: NYC Mobility](./lab-05-nyc-mobility-externalities/) | High Volume Data | Taxi and 311 complaint correlation |
+
+---
+
+## Lab Folder Structure
+
+Each lab is a complete Python project:
+
+```
+lab-XX-name/
+├── README.md           # Lab instructions
+├── Makefile            # Commands: make setup, make run, etc.
+├── pyproject.toml      # Python dependencies
+├── app.py              # Streamlit dashboard (run with: make run)
+├── data/
+│   ├── raw/            # Downloaded datasets (make download)
+│   └── processed/      # Your analysis outputs
+├── scripts/            # Data processing pipeline
+├── src/                # Reusable Python code
+├── exercises/          # Step-by-step exercise guides
+├── findings/           # Your executive summaries
+└── visualizations/     # Your charts and graphs
+```
+
+---
+
+## Vibe Coding Approach
+
+These labs use **"Vibe Coding"** - you describe what you want in plain English, and AI writes the code for you.
+
+**Instead of writing Python yourself, you'll:**
+1. Read the exercise prompts in `exercises/` folder
+2. Copy the "Vibe Coding Prompt" into your AI tool (Claude Code, Cursor, etc.)
+3. Let the AI generate the Python code
+4. Review and run the code
+5. Iterate until you get the results you need
+
+**The exercises teach you:**
+- What to ask for (the right prompts)
+- What to look for (validation checks)
+- How to interpret results (business insights)
+
+---
 
 ## Prerequisites
 
-**Technical Requirements:**
-- Python 3.8 or higher
-- Required packages: pandas, numpy, scipy, matplotlib, seaborn, streamlit
-- Kaggle API credentials (for dataset downloads)
-- Basic understanding of DataFrames and aggregations
+**Required Tools** (the Doctor checks these):
+- Python 3.12 or higher
+- uv (Python package manager)
+- make (build tool)
+- At least one AI coding tool:
+  - Claude Code (recommended)
+  - Cursor
+  - VS Code with GitHub Copilot
+  - Aider
+  - Windsurf
 
-**Recommended Background:**
-- Familiarity with Python syntax
-- Basic statistics knowledge (mean, median, standard deviation)
-- Understanding of tabular data structures
+**Kaggle Account** (for downloading datasets):
+- Create account at [kaggle.com](https://www.kaggle.com)
+- Get API key from Settings → API → Create New Token
+- See [Dataset Download Guide](./docs/dataset-download-guide.md)
 
-## Repository Structure
+---
 
-```
-labs/
-├── README.md                          # This file
-├── .gitignore                         # Git ignore patterns
-├── docs/                              # Shared documentation
-│   ├── setup-guide.md                # Environment setup instructions
-│   ├── dataset-download-guide.md     # Kaggle API configuration
-│   ├── teaching-guidelines.md        # Pedagogical approach
-│   └── correlation-primer.md         # Correlation concepts reference
-│
-├── lab-01-nyc-neighborhood-signals/  # Lab 1 materials
-│   ├── README.md                     # Lab overview and exercises
-│   ├── data/raw/                     # Downloaded datasets
-│   ├── exercises/                    # 5 exercise markdown files
-│   └── hints/                        # Strategic guidance
-│
-├── lab-02-us-safety-drivers/         # Lab 2 materials
-│   └── ... (same structure)
-│
-├── lab-03-hospitality-demand/        # Lab 3 materials
-│   └── ... (same structure)
-│
-├── lab-04-streaming-catalog/         # Lab 4 materials
-│   └── ... (same structure)
-│
-├── lab-05-nyc-mobility-externalities/ # Lab 5 materials
-│   └── ... (same structure)
-│
-└── shared/
-    └── utilities/
-        └── download_datasets.py      # Dataset download automation
-```
+## Getting Help
 
-## Getting Started
+### Common Issues
 
-### Step 1: Set Up Your Environment
+**"command not found: make"**
+- Mac: Run `xcode-select --install`
+- Windows: Run `winget install GnuWin32.Make`
 
-Follow the [Setup Guide](./docs/setup-guide.md) to:
-- Install Python and required packages
-- Set up a virtual environment
-- Verify your installation
-
-### Step 2: Configure Kaggle API
-
-All datasets come from Kaggle. Follow the [Dataset Download Guide](./docs/dataset-download-guide.md) to:
-- Create a Kaggle account
-- Generate API credentials
-- Configure the Kaggle CLI
-
-### Step 3: Download Datasets
-
-Use the provided utility script or follow manual download instructions:
-
+**"permission denied" on Mac**
 ```bash
-# Automated approach (recommended)
-python shared/utilities/download_datasets.py
-
-# Manual approach
-# Follow instructions in each lab's data/raw/README.md
+chmod +x ./scripts/macos-setup.sh
 ```
 
-### Step 4: Start Learning
+**"script execution disabled" on Windows**
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
 
-Begin with [Lab 1: NYC Neighborhood Signals](./lab-01-nyc-neighborhood-signals/README.md) and progress sequentially through the labs.
-
-## Core Concepts Covered
-
-### Data Cleansing
-- Handling missing values and outliers
-- Standardizing data formats (dates, text, geographic)
-- Deduplication and validation
-- Data quality profiling
-
-### Analytics Techniques
-- Exploratory data analysis (EDA)
-- Geographic and temporal aggregation
-- Multi-dataset joining strategies
-- Feature engineering
-
-### Correlation Analysis
-- Pearson correlation (linear relationships)
-- Spearman correlation (monotonic relationships)
-- Correlation interpretation and visualization
-- Identifying confounders and spurious correlations
-
-### Data Quality Guardrails
-- **Grain consistency**: Standardizing datasets to same granularity before joins
-- **No data leakage**: Avoiding future information in historical predictions
-- **Join validation**: Verifying cardinality and coverage
-- **Statistical rigor**: Testing significance and avoiding p-hacking
-
-## Lab Progression Philosophy
-
-The labs are designed with progressive complexity following **consultant mindset** (from our playbook):
-
-1. **Lab 1** - Foundation: Geographic joins + "So What" thinking
-2. **Lab 2** - Intermediate: Temporal features + business impact translation
-3. **Lab 3** - Application: Calendar analysis + actionable recommendations
-4. **Lab 4** - Advanced: Fuzzy matching + data enrichment storytelling
-5. **Lab 5** - Scale: High-volume data + performance-conscious delivery
-
-**Each lab produces 3 deliverables:**
-1. **Data Outputs** (CSVs in `data/processed/`)
-2. **Visualizations** (Charts in `visualizations/`)
-3. **Insights** (Executive summary in `findings/`)
-
-**Consistent workflow (aligned with consulting process):**
-1. **Explore** → Understand the data
-2. **Standardize** → Clean for consistent grain
-3. **Aggregate** → Summarize to business-relevant level
-4. **Join** → Combine with validation
-5. **Analyze & Visualize** → Create charts that answer "So What"
-6. **Present** → Write executive summary with recommendations
-
-## Support Resources
+**"kaggle: command not found"**
+- Make sure you ran `make setup` in the lab folder first
+- Activate the virtual environment:
+  - Mac: `source .venv/bin/activate`
+  - Windows: `.venv\Scripts\Activate.ps1`
 
 ### Documentation
-- [Setup Guide](./docs/setup-guide.md) - Technical environment configuration
-- [Dataset Download Guide](./docs/dataset-download-guide.md) - Kaggle API setup
-- [Teaching Guidelines](./docs/teaching-guidelines.md) - Pedagogical approach and best practices
-- [Correlation Primer](./docs/correlation-primer.md) - Statistical concepts explained
 
-### Code Repository
-- **This repo**: Documentation, datasets, and exercises
-- **Boilerplate repo** (separate): Python starter code and Streamlit templates
+- [Setup Guide](./docs/setup-guide.md) - Detailed environment setup
+- [Dataset Download Guide](./docs/dataset-download-guide.md) - Kaggle API configuration
+- [Correlation Primer](./docs/correlation-primer.md) - Statistics concepts explained
 
-### Getting Help
-- Review the hints files in each lab's `hints/` directory
-- Check common pitfalls sections in lab READMEs
-- Consult the correlation primer for statistical questions
+---
 
 ## Expected Time Investment
 
-**Per Lab:**
-- Data exploration: 30-60 minutes
-- Standardization: 45-90 minutes
-- Aggregation and joining: 60-90 minutes
-- Correlation analysis: 90-120 minutes
-- **Total per lab**: 4-6 hours
+| Lab | Estimated Time |
+|-----|----------------|
+| Lab 1 | 4-6 hours |
+| Lab 2 | 4-6 hours |
+| Lab 3 | 4-5 hours |
+| Lab 4 | 5-7 hours |
+| Lab 5 | 5-7 hours |
+| **Total** | **22-31 hours** |
 
-**Full Course:**
-- 5 labs × 5 hours average = **25 hours**
-- Plus setup time: ~2 hours
-- **Grand total**: ~27 hours of hands-on learning
+---
+
+## Streamlit Ports
+
+Each lab runs on a different port so you can have multiple open:
+
+| Lab | Port | URL |
+|-----|------|-----|
+| Lab 1 | 8501 | http://localhost:8501 |
+| Lab 2 | 8502 | http://localhost:8502 |
+| Lab 3 | 8503 | http://localhost:8503 |
+| Lab 4 | 8504 | http://localhost:8504 |
+| Lab 5 | 8505 | http://localhost:8505 |
+
+---
 
 ## Learning Objectives
 
 By completing all 5 labs, you will be able to:
 
-- ✅ Perform comprehensive data quality assessments
-- ✅ Execute geographic and temporal standardization
-- ✅ Design and implement multi-dataset join strategies
-- ✅ Calculate and interpret Pearson and Spearman correlations
-- ✅ Create effective data visualizations
-- ✅ Identify and avoid common analytical pitfalls
-- ✅ Apply correlation analysis to business problems
-- ✅ Handle large datasets with appropriate techniques
-- ✅ Document analytical workflows clearly
-
-## Dataset Attribution
-
-All datasets are sourced from Kaggle and are subject to their respective licenses. Please review each dataset's license on Kaggle before use in production or publication.
-
-### Acknowledgments
-- New York City Open Data
-- NOAA National Centers for Environmental Information
-- Kaggle dataset contributors
-- TMDb and Netflix for entertainment data
-
-## Contributing
-
-This repository is designed for internal SRX training. If you discover errors or have suggestions for improvements, please contact the repository maintainer.
-
-## License
-
-Internal use only - SRX training materials.
+- ✅ Set up Python data science environments
+- ✅ Use AI tools for "Vibe Coding" data analysis
+- ✅ Perform data quality assessments
+- ✅ Execute geographic and temporal joins
+- ✅ Calculate and interpret correlations
+- ✅ Create interactive Streamlit dashboards
+- ✅ Handle large datasets efficiently
+- ✅ Write executive summaries with business insights
 
 ---
 
-**Ready to start?** Head to [Lab 1: NYC Neighborhood Signals](./lab-01-nyc-neighborhood-signals/README.md) and begin your data science journey!
+## Dataset Attribution
+
+All datasets are from Kaggle under their respective licenses:
+- NYC Airbnb Open Data (CC0)
+- NY 311 Service Requests (NYC Open Data)
+- US Accidents (CC BY-NC-SA 4.0)
+- Hotel Booking Demand (CC0)
+- Netflix/Amazon/Disney Catalogs (CC0)
+- NYC Taxi Trip Data (NYC Open Data)
+
+---
+
+**Ready to start?** Run the Doctor first, then head to [Lab 1](./lab-01-nyc-neighborhood-signals/)!

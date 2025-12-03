@@ -1,0 +1,8 @@
+# This directory contains raw data files downloaded from Kaggle
+# Files are ignored by git (too large) - download using: make download
+#
+# Expected files:
+# - AB_NYC_2019.csv (NYC Airbnb Open Data)
+# - 311_Service_Requests.csv (NY 311 Service Requests)
+# - NYPD_Complaint_Data_Historic.csv (NYPD Crime Data)
+# - nyc_weather.csv (NYC Central Park Weather)

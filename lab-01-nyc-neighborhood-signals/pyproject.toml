@@ -1,0 +1,55 @@
+[project]
+name = "lab-01-nyc-neighborhood-signals"
+version = "1.0.0"
+description = "Lab 1: NYC Neighborhood Signal Extraction - Correlating Airbnb with 311, Crime, and Weather"
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    # Data Processing
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "openpyxl>=3.1.0",
+    "xlrd>=2.0.0",
+
+    # Statistical Analysis
+    "scipy>=1.12.0",
+    "statsmodels>=0.14.0",
+
+    # Visualization & Dashboard
+    "streamlit>=1.42.0",
+    "plotly>=5.18.0",
+    "altair>=5.2.0",
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "tqdm>=4.66.0",
+    "kaggle>=1.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
