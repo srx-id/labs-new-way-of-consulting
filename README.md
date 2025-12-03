@@ -73,14 +73,18 @@ cd C:\Users\YourName\Documents\labs
 
 Copy and paste this command, then press `Enter`:
 ```powershell
-.\scripts\windows-setup.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
 ```
 
-> If you get a "script execution" error, run this first:
+> **⚠️ Getting "script not digitally signed" error?**
+>
+> Windows blocks unsigned scripts by default. The command above uses `-ExecutionPolicy Bypass` to run this specific script safely.
+>
+> **Alternative:** If you want to permanently allow scripts (so you don't need Bypass every time):
 > ```powershell
 > Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 > ```
-> Then try the Doctor command again.
+> Then you can run: `.\scripts\windows-setup.ps1`
 
 **4. Follow the prompts**
 - The Doctor will check your system
@@ -239,7 +243,14 @@ These labs use **"Vibe Coding"** - you describe what you want in plain English, 
 chmod +x ./scripts/macos-setup.sh
 ```
 
-**"script execution disabled" on Windows**
+**"script not digitally signed" or "execution disabled" on Windows**
+
+Use Bypass mode (recommended - runs just this script):
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
+```
+
+Or permanently allow scripts for your user:
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
