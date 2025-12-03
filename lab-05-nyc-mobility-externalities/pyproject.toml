@@ -9,7 +9,7 @@ dependencies = [
     # Data Processing (High Volume Focus)
     "pandas>=2.2.0",
     "numpy>=1.26.0",
-    "pyarrow>=15.0.0",
+    "pyarrow>=15.0.0,<21.0.0",  # Pin to avoid build issues on Windows
     "fastparquet>=2024.2.0",
     "dask>=2024.1.0",
 
@@ -22,7 +22,7 @@ dependencies = [
     "shapely>=2.0.0",
 
     # Visualization & Dashboard
-    "streamlit>=1.42.0",
+    "streamlit>=1.31.0,<1.51.0",  # Pin to avoid pyarrow 21 dependency
     "plotly>=5.18.0",
     "altair>=5.2.0",
     "matplotlib>=3.8.0",
