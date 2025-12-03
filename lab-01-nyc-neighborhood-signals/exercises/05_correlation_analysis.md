@@ -2,333 +2,408 @@
 
 **[Lab 1 Home](../README.md) > Exercise 5**
 
-## Objectives
+## Overview
 
-✅ Calculate Pearson and Spearman correlations
-✅ Identify statistically significant relationships
-✅ **Create client-ready visualizations** (correlation heatmap, scatter plots, trend charts)
-✅ Write executive summary with "So What" insights
-✅ Deliver actionable recommendations
+This is the payoff - where you answer the client's actual question! In this exercise, you'll learn how to **calculate correlations, create visualizations, and tell a story** with your data.
 
-**Estimated Time**: 90-120 minutes
+**Time**: 90-120 minutes
 
-## Business Question (From Client)
+## The Client's Question
 
-"What neighborhood characteristics should we weight most heavily when evaluating Airbnb investment opportunities?"
+> "What neighborhood characteristics should we consider when pricing and selecting Airbnb investment properties?"
 
-## Tasks
-
-### Task 5.1: Calculate Correlations
-
-Load your final dataset from Exercise 4:
-
-```python
-import pandas as pd
-import numpy as np
-from scipy import stats
-
-# Load final joined dataset
-df = pd.read_csv('../data/processed/final_dataset.csv')
-
-# Calculate Pearson correlations
-variables = ['avg_price', 'median_reviews_per_month', 'complaint_count',
-             'crime_count', 'avg_temp', 'total_precip']
-
-correlation_pearson = df[variables].corr(method='pearson')
-correlation_spearman = df[variables].corr(method='spearman')
-
-# Save correlation matrices
-correlation_pearson.to_csv('../data/processed/correlation_matrix_pearson.csv')
-correlation_spearman.to_csv('../data/processed/correlation_matrix_spearman.csv')
-
-print("✓ Saved correlation matrices")
-```
-
-### Task 5.2: Extract Significant Correlations
-
-Identify which correlations are statistically significant (p < 0.05):
-
-```python
-# Calculate p-values for all pairs
-from itertools import combinations
-
-significant_correlations = []
-
-for var1, var2 in combinations(variables, 2):
-    pearson_r, pearson_p = stats.pearsonr(df[var1], df[var2])
-    spearman_r, spearman_p = stats.spearmanr(df[var1], df[var2])
-
-    if pearson_p < 0.05:  # Statistically significant
-        significant_correlations.append({
-            'Variable_1': var1,
-            'Variable_2': var2,
-            'Pearson_r': round(pearson_r, 3),
-            'Pearson_p': round(pearson_p, 4),
-            'Spearman_r': round(spearman_r, 3),
-            'Spearman_p': round(spearman_p, 4),
-            'Strength': 'Strong' if abs(pearson_r) > 0.5 else 'Moderate' if abs(pearson_r) > 0.3 else 'Weak',
-            'Direction': 'Positive' if pearson_r > 0 else 'Negative'
-        })
-
-df_sig = pd.DataFrame(significant_correlations)
-df_sig.to_csv('../data/processed/significant_correlations.csv', index=False)
-
-print(f"✓ Found {len(significant_correlations)} significant correlations")
-print("\nTop 3 Strongest Correlations:")
-print(df_sig.nlargest(3, 'Pearson_r')[['Variable_1', 'Variable_2', 'Pearson_r', 'Strength']])
-```
-
-### Task 5.3: Create Correlation Heatmap
-
-**Business Question**: Which metrics are most strongly related?
-
-```python
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# Set professional style
-sns.set_style("white")
-plt.rcParams['figure.dpi'] = 300
-
-# Create figure with two subplots (Pearson and Spearman)
-fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-
-# Pearson heatmap
-sns.heatmap(correlation_pearson, annot=True, cmap='coolwarm', center=0,
-            vmin=-1, vmax=1, square=True, ax=axes[0],
-            cbar_kws={'label': 'Correlation Coefficient'})
-axes[0].set_title('Pearson Correlation: Neighborhood Metrics\nLinear Relationships',
-                  fontsize=14, fontweight='bold')
-
-# Spearman heatmap
-sns.heatmap(correlation_spearman, annot=True, cmap='coolwarm', center=0,
-            vmin=-1, vmax=1, square=True, ax=axes[1],
-            cbar_kws={'label': 'Correlation Coefficient'})
-axes[1].set_title('Spearman Correlation: Neighborhood Metrics\nMonotonic Relationships',
-                  fontsize=14, fontweight='bold')
-
-plt.tight_layout()
-plt.savefig('../visualizations/correlation_heatmap.png', dpi=300, bbox_inches='tight')
-print("✓ Saved: visualizations/correlation_heatmap.png")
-```
-
-### Task 5.4: Price vs Crime Scatter Plot
-
-**Business Question**: How much does crime affect pricing power?
-
-```python
-# Create scatter plot
-fig, ax = plt.subplots(figsize=(10, 6))
-
-# Scatter with borough colors
-for borough in df['borough'].unique():
-    borough_data = df[df['borough'] == borough]
-    ax.scatter(borough_data['crime_count'], borough_data['avg_price'],
-               label=borough, alpha=0.6, s=100)
-
-# Add trend line
-z = np.polyfit(df['crime_count'], df['avg_price'], 1)
-p = np.poly1d(z)
-x_trend = np.linspace(df['crime_count'].min(), df['crime_count'].max(), 100)
-ax.plot(x_trend, p(x_trend), "r--", linewidth=2, alpha=0.8, label='Trend')
-
-# Calculate correlation for title
-r, p_val = stats.pearsonr(df['crime_count'], df['avg_price'])
-
-# Title with insight
-ax.set_title(f'Higher Crime Areas Show Lower Prices (r = {r:.2f}, p < 0.01)\n' +
-             f'NYC Airbnb Analysis: Borough-Month Level (2019)',
-             fontsize=14, fontweight='bold')
-
-ax.set_xlabel('Crime Incidents per Borough-Month', fontsize=12)
-ax.set_ylabel('Average Nightly Price ($)', fontsize=12)
-ax.legend(title='Borough', loc='upper right')
-ax.grid(True, alpha=0.3)
-
-# Add annotation with business insight
-slope = z[0]
-ax.annotate(f'Every 10 crimes/month\nassociated with ${abs(slope*10):.0f} lower price',
-            xy=(0.7, 0.95), xycoords='axes fraction',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
-            fontsize=10)
-
-plt.tight_layout()
-plt.savefig('../visualizations/price_vs_crime_scatter.png', dpi=300, bbox_inches='tight')
-print("✓ Saved: visualizations/price_vs_crime_scatter.png")
-```
-
-### Task 5.5: Seasonality Trends
-
-**Business Question**: When should we expect peak demand?
-
-```python
-# Aggregate by month (across boroughs)
-monthly = df.groupby('year_month').agg({
-    'avg_price': 'mean',
-    'median_reviews_per_month': 'mean',
-    'avg_temp': 'mean'
-}).reset_index()
-
-# Extract month for x-axis
-monthly['month'] = pd.to_datetime(monthly['year_month'] + '-01').dt.month
-monthly = monthly.sort_values('month')
-
-# Create figure with dual y-axis
-fig, ax1 = plt.subplots(figsize=(12, 6))
-ax2 = ax1.twinx()
-
-# Plot price and reviews
-line1 = ax1.plot(monthly['month'], monthly['avg_price'],
-                 marker='o', color='#2E86AB', linewidth=2, label='Avg Price')
-line2 = ax2.plot(monthly['month'], monthly['median_reviews_per_month'],
-                 marker='s', color='#A23B72', linewidth=2, label='Reviews/Month')
-
-# Temperature as background
-ax3 = ax1.twinx()
-ax3.spines['right'].set_position(('outward', 60))
-line3 = ax3.plot(monthly['month'], monthly['avg_temp'],
-                 linestyle='--', color='#F18F01', linewidth=1.5, alpha=0.7, label='Temperature')
-
-# Labels
-ax1.set_xlabel('Month (2019)', fontsize=12)
-ax1.set_ylabel('Average Price ($)', fontsize=12, color='#2E86AB')
-ax2.set_ylabel('Reviews per Month', fontsize=12, color='#A23B72')
-ax3.set_ylabel('Temperature (°F)', fontsize=12, color='#F18F01')
-
-# Title with insight
-ax1.set_title('Summer Months Drive 20% Higher Review Activity\n' +
-              'NYC Airbnb Seasonality Analysis (2019)',
-              fontsize=14, fontweight='bold')
-
-# Month labels
-month_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-ax1.set_xticks(range(1, 13))
-ax1.set_xticklabels(month_labels)
-
-# Highlight peak season
-ax1.axvspan(6, 9, alpha=0.1, color='green', label='Peak Season')
-
-# Legend
-lines = line1 + line2 + line3
-labels = [l.get_label() for l in lines]
-ax1.legend(lines, labels, loc='upper left')
-
-plt.tight_layout()
-plt.savefig('../visualizations/seasonality_trends.png', dpi=300, bbox_inches='tight')
-print("✓ Saved: visualizations/seasonality_trends.png")
-```
-
-### Task 5.6: Write Executive Summary
-
-Create `../findings/executive_summary.md` answering the client's question.
-
-**Template**: See [findings/README.md](../findings/README.md) for structure.
-
-**Key Sections**:
-1. **Executive Summary** (2-3 sentences): What are the top 3 drivers of Airbnb performance?
-2. **Key Findings** (3-4 findings): Each with correlation, business impact, and "So What"
-3. **Recommendations** (4-5 actions): What should client do?
-4. **Supporting Evidence**: Reference your visualizations
-5. **Confidence & Limitations**: Be honest about data constraints
-
-**Example Finding Format**:
-
-```markdown
-### 1. Crime Impact on Pricing (Strongest Predictor)
-- **Correlation**: Strong negative (r = -0.52, p < 0.01)
-- **Business Impact**: Every 10 crimes/month associated with $8 lower nightly price
-- **So What**: Prioritize neighborhoods with <50 crimes/month for premium positioning
-- **Evidence**: See `visualizations/price_vs_crime_scatter.png`
-```
-
-### Task 5.7: Create Correlation Insights CSV
-
-For client's easy reference, create a business-friendly summary:
-
-```python
-# Build insights table
-insights = []
-
-for idx, row in df_sig.iterrows():
-    var1_clean = row['Variable_1'].replace('_', ' ').title()
-    var2_clean = row['Variable_2'].replace('_', ' ').title()
-
-    # Business interpretation
-    if 'price' in row['Variable_1'].lower():
-        if row['Direction'] == 'Negative':
-            implication = f"Higher {var2_clean} → Lower prices"
-        else:
-            implication = f"Higher {var2_clean} → Higher prices"
-    elif 'review' in row['Variable_1'].lower():
-        if row['Direction'] == 'Negative':
-            implication = f"Higher {var2_clean} → Lower demand"
-        else:
-            implication = f"Higher {var2_clean} → Higher demand"
-    else:
-        implication = f"{row['Strength']} {row['Direction'].lower()} relationship"
-
-    insights.append({
-        'Relationship': f"{var1_clean} vs {var2_clean}",
-        'Correlation': f"{row['Pearson_r']} ({row['Strength']})",
-        'P_Value': row['Pearson_p'],
-        'Statistical_Significance': 'Yes' if row['Pearson_p'] < 0.05 else 'No',
-        'Business_Implication': implication,
-        'Action': 'Include in investment model' if abs(row['Pearson_r']) > 0.4 else 'Monitor but lower priority'
-    })
-
-df_insights = pd.DataFrame(insights)
-df_insights.to_csv('../data/processed/correlation_insights.csv', index=False)
-
-print("✓ Saved: data/processed/correlation_insights.csv")
-print("\nTop Insights:")
-print(df_insights[['Relationship', 'Correlation', 'Business_Implication']].head())
-```
-
-## Deliverables Checklist
-
-Before considering this exercise complete, verify:
-
-- [ ] `data/processed/correlation_matrix_pearson.csv` - Pearson correlations
-- [ ] `data/processed/correlation_matrix_spearman.csv` - Spearman correlations
-- [ ] `data/processed/significant_correlations.csv` - Filtered significant relationships
-- [ ] `data/processed/correlation_insights.csv` - Business-friendly summary
-- [ ] `visualizations/correlation_heatmap.png` - Pearson & Spearman comparison
-- [ ] `visualizations/price_vs_crime_scatter.png` - Crime impact on pricing
-- [ ] `visualizations/seasonality_trends.png` - Monthly demand patterns
-- [ ] `findings/executive_summary.md` - 1-page client brief with "So What"
-
-## Validation
-
-### Statistical Validation
-- All correlations between -1 and +1
-- P-values calculated for all pairs
-- Pearson and Spearman compared (divergence > 0.1 investigated)
-
-### Business Validation
-- Every finding translates to business impact
-- Recommendations are specific and actionable
-- Limitations acknowledged (2019 data, borough grain, correlation ≠ causation)
-
-### Visualization Validation
-- Every chart has business-focused title (insight, not description)
-- Axes labeled clearly (no code variable names)
-- High resolution (300 DPI)
-- Color-blind friendly palette
-
-## Interpretation Framework
-
-For each significant correlation, answer:
-
-1. **What**: Correlation coefficient and strength
-2. **Confidence**: P-value and significance
-3. **Comparison**: Pearson vs Spearman (linear vs monotonic)
-4. **Business Impact**: Translate to $ or % terms
-5. **So What**: Specific action client should take
-6. **Caveats**: Confounders, limitations, alternative explanations
+By the end of this exercise, you'll have:
+- Correlation analysis showing which factors matter
+- Client-ready visualizations
+- An executive summary with actionable recommendations
 
 ---
 
-**Remember**: Client hired you to think, not just calculate. Your executive summary is the deliverable, not the correlation matrix.
+## Task 5.1: Calculate Correlation Matrix
 
-[← Exercise 4](./04_dataset_joining.md) | [Lab 1 Home](../README.md)
+### What You Want to Achieve
+Find which variables are related to price and review activity.
+
+### The Vibe Coding Prompt
+
+```
+Load the final dataset from data/processed/final_dataset.csv
+
+Calculate correlations between these key variables:
+- avg_price (what we want to predict)
+- median_reviews_per_month (proxy for demand)
+- complaint_count
+- crime_count
+- avg_temp
+- total_precip
+
+Create two correlation matrices:
+1. Pearson correlation (measures linear relationships)
+2. Spearman correlation (measures monotonic relationships - more robust to outliers)
+
+Show me both matrices and highlight:
+- The strongest positive correlations
+- The strongest negative correlations
+- Any big differences between Pearson and Spearman
+
+Save matrices to:
+- data/processed/correlation_matrix_pearson.csv
+- data/processed/correlation_matrix_spearman.csv
+```
+
+### Interpreting Correlations
+
+| Correlation Value | Strength | Meaning |
+|-------------------|----------|---------|
+| 0.7 to 1.0 | Strong | Variables move together closely |
+| 0.4 to 0.7 | Moderate | Clear relationship, but other factors matter |
+| 0.1 to 0.4 | Weak | Some relationship, but not reliable |
+| -0.1 to 0.1 | None | Variables not related |
+| Negative | Inverse | When one goes up, the other goes down |
+
+---
+
+## Task 5.2: Check Statistical Significance
+
+### What You Want to Achieve
+Determine which correlations are real (not just random noise).
+
+### The Vibe Coding Prompt
+
+```
+For each correlation pair, calculate the p-value.
+
+A correlation is statistically significant if p < 0.05.
+
+Create a table showing:
+| Variable 1 | Variable 2 | Pearson r | P-value | Significant? | Strength |
+
+Filter to only show significant correlations (p < 0.05).
+Sort by correlation strength (highest absolute value first).
+
+Which relationships can we trust?
+Which might just be noise?
+```
+
+### Understanding P-Values
+
+- **p < 0.01**: Very confident this is real
+- **p < 0.05**: Reasonably confident
+- **p > 0.05**: Might be random chance - don't trust it
+
+---
+
+## Task 5.3: Create the Correlation Heatmap
+
+### What You Want to Achieve
+A visual showing all correlations at a glance.
+
+### The Vibe Coding Prompt
+
+```
+Create a professional correlation heatmap visualization.
+
+Requirements:
+1. Side-by-side comparison: Pearson on left, Spearman on right
+2. Color scale: Blue for negative, white for zero, red for positive
+3. Show correlation values inside each cell
+4. Clean, readable labels (no underscores or code names)
+5. Title that explains what the chart shows
+
+Make it presentation-ready:
+- High resolution (300 DPI)
+- Professional color scheme
+- Clear legend
+
+Save as visualizations/correlation_heatmap.png
+```
+
+### What the Client Wants to See
+The heatmap answers: "Which metrics move together?"
+- Strong red squares = these increase together
+- Strong blue squares = when one goes up, the other goes down
+
+---
+
+## Task 5.4: Create Price vs. Crime Scatter Plot
+
+### What You Want to Achieve
+A visual showing the relationship between crime and pricing.
+
+### The Vibe Coding Prompt
+
+```
+Create a scatter plot showing how crime relates to Airbnb prices.
+
+Requirements:
+1. X-axis: crime_count (number of crime incidents)
+2. Y-axis: avg_price (average nightly price)
+3. Color each point by borough (5 different colors)
+4. Add a trend line showing the overall direction
+5. Include the correlation coefficient in the title
+
+The title should be an INSIGHT, not just a description.
+Bad: "Crime vs Price Scatter Plot"
+Good: "Higher Crime Areas Show 15% Lower Prices (r = -0.52)"
+
+Add an annotation box with the business implication:
+"Every X additional crimes/month associated with $Y lower price"
+
+Save as visualizations/price_vs_crime_scatter.png
+```
+
+### Business Translation
+Don't just show the correlation - translate it to dollars:
+- "Every 100 additional crimes per month = $X lower nightly rate"
+- "Low-crime neighborhoods command a X% premium"
+
+---
+
+## Task 5.5: Create Seasonality Chart
+
+### What You Want to Achieve
+Show how demand patterns change throughout the year.
+
+### The Vibe Coding Prompt
+
+```
+Create a line chart showing seasonal patterns across 2019.
+
+Plot these metrics across 12 months:
+1. Average price (primary Y-axis)
+2. Average reviews per month (secondary Y-axis)
+3. Temperature (background reference)
+
+Highlight the "peak season" (June-August) with a shaded region.
+
+Title should reveal the insight:
+"Summer Demand Drives 20% Higher Review Activity in NYC"
+
+Add annotations for:
+- Peak month
+- Lowest month
+- The price vs. demand relationship
+
+Save as visualizations/seasonality_trends.png
+```
+
+### What This Tells the Client
+- When to expect highest demand
+- How to adjust pricing by season
+- Weather's influence on booking patterns
+
+---
+
+## Task 5.6: Create Borough Comparison Chart
+
+### What You Want to Achieve
+Compare metrics across the 5 NYC boroughs.
+
+### The Vibe Coding Prompt
+
+```
+Create a multi-panel comparison of boroughs.
+
+For each borough, show:
+- Average price (bar chart)
+- Average crime count (bar chart)
+- Average complaint count (bar chart)
+- Average reviews per month (bar chart)
+
+Use small multiples (2x2 grid) or a grouped bar chart.
+
+Rank boroughs by price and show whether higher-priced boroughs
+have more or fewer quality-of-life issues.
+
+Title: "Manhattan Commands 2x Premium Despite Higher Complaint Volume"
+
+Save as visualizations/borough_comparison.png
+```
+
+### Key Insight
+The client wants to know: "Which boroughs are best for investment?"
+- High price + low crime = premium market
+- Low price + high crime = value play (more risk)
+
+---
+
+## Task 5.7: Write the Executive Summary
+
+### What You Want to Achieve
+A 1-page brief that answers the client's question with recommendations.
+
+### The Vibe Coding Prompt
+
+```
+Create an executive summary for the client.
+
+Structure:
+1. Executive Summary (3 sentences max)
+   - What's the #1 finding?
+   - What's the business implication?
+   - What should they do?
+
+2. Key Findings (3-4 bullets)
+   For each finding:
+   - The correlation (with number)
+   - Business translation (in dollars or percentages)
+   - Recommended action
+   - Supporting chart reference
+
+3. Recommendations (4-5 specific actions)
+   - What neighborhoods to target
+   - How to price based on our findings
+   - Seasonal strategy
+   - Risk factors to monitor
+
+4. Methodology Note
+   - Data sources used
+   - Time period (2019)
+   - Key limitations
+
+5. Appendix Reference
+   - List of visualizations
+   - Data files created
+
+Save as findings/executive_summary.md
+```
+
+### Example Finding Format
+
+```
+### Finding 1: Crime Significantly Impacts Pricing Power
+
+**Correlation**: Strong negative (r = -0.52, p < 0.01)
+
+**Business Translation**: Neighborhoods with 100 fewer monthly
+crime incidents command $12 higher nightly rates on average.
+
+**Recommendation**: Prioritize investments in neighborhoods with
+crime counts below the citywide median for premium positioning.
+
+**Evidence**: See visualizations/price_vs_crime_scatter.png
+```
+
+---
+
+## Task 5.8: Create Insights Summary Table
+
+### What You Want to Achieve
+A client-friendly table summarizing all findings.
+
+### The Vibe Coding Prompt
+
+```
+Create a summary table of key correlations for the client.
+
+Columns:
+- Relationship (e.g., "Price vs Crime")
+- Correlation (e.g., "-0.52")
+- Strength (Strong/Moderate/Weak)
+- Significance (Yes/No)
+- Business Implication (plain English)
+- Action (what to do about it)
+
+Only include statistically significant relationships.
+Sort by importance to pricing decisions.
+
+Save as data/processed/correlation_insights.csv
+```
+
+---
+
+## Deliverables Checklist
+
+After completing this exercise, you should have:
+
+- [ ] `data/processed/correlation_matrix_pearson.csv`
+- [ ] `data/processed/correlation_matrix_spearman.csv`
+- [ ] `data/processed/correlation_insights.csv`
+- [ ] `visualizations/correlation_heatmap.png`
+- [ ] `visualizations/price_vs_crime_scatter.png`
+- [ ] `visualizations/seasonality_trends.png`
+- [ ] `visualizations/borough_comparison.png`
+- [ ] `findings/executive_summary.md`
+
+---
+
+## Key Vocabulary for Vibe Coding
+
+When doing correlation analysis, these keywords help:
+
+| What You Want | Keywords to Use |
+|---------------|-----------------|
+| Measure relationship | "correlation", "relationship between", "how X affects Y" |
+| Linear relationship | "Pearson correlation" |
+| Ranked relationship | "Spearman correlation" (robust to outliers) |
+| Check if real | "p-value", "statistical significance", "confidence" |
+| Visual matrix | "heatmap", "correlation matrix visualization" |
+| Show relationship | "scatter plot", "trend line", "regression line" |
+| Over time | "line chart", "time series", "seasonality" |
+| Compare groups | "bar chart", "grouped bars", "small multiples" |
+
+---
+
+## Common Issues and How to Fix Them
+
+**If correlations seem too weak:**
+```
+The correlations are weaker than expected.
+Show me the scatter plots to visually inspect the relationships.
+Are there outliers that might be affecting the correlation?
+Try removing extreme values and recalculating.
+```
+
+**If Pearson and Spearman differ a lot:**
+```
+Pearson shows 0.3 but Spearman shows 0.6.
+This suggests the relationship is non-linear or has outliers.
+Show me a scatter plot to understand the pattern.
+Which correlation should we report to the client?
+```
+
+**If p-values are all high (not significant):**
+```
+None of my correlations are statistically significant.
+This might be because we only have 60 data points.
+Should we use a different time grain (weekly instead of monthly)?
+Or acknowledge the limitation in our executive summary?
+```
+
+**If charts don't look professional:**
+```
+The chart looks too cluttered.
+Remove gridlines, simplify colors, increase font size.
+Make sure the title tells the insight, not just describes the chart.
+```
+
+---
+
+## The "So What" Test
+
+Before submitting, check every finding against this test:
+
+1. **So what?** → Why does this matter to the client?
+2. **Now what?** → What should they do differently?
+3. **How much?** → Quantify the impact in dollars or percentages
+
+If you can't answer all three, the finding isn't ready.
+
+---
+
+## Congratulations!
+
+You've completed Lab 1! You now know how to:
+- Explore and profile datasets
+- Standardize geographic data
+- Aggregate to consistent time grains
+- Join multiple datasets
+- Calculate and interpret correlations
+- Create client-ready visualizations
+- Write executive summaries
+
+**Next Step**: [Lab 2: US Safety Drivers](../../lab-02-us-safety-drivers/README.md) will teach you how to work with time-based analysis and feature engineering.
+
+---
+
+[← Previous: Dataset Joining](./04_dataset_joining.md) | [Lab 1 Home](../README.md)
