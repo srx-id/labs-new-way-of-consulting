@@ -15,28 +15,37 @@ Before doing anything else, run the **"Doctor" script** to check and install wha
 - Type `PowerShell`
 - Click on **"Windows PowerShell"** (the blue icon, NOT Command Prompt)
 
-**2. Navigate to this folder**
+**2. Navigate to the correct folder**
 
-In File Explorer, find the `labs` folder you downloaded, then:
-- Click on the **address bar** at the top (where it shows the folder path)
-- The path will be highlighted - press `Ctrl + C` to copy it
+If you downloaded as ZIP from GitHub:
+- Extract the ZIP file first (right-click → "Extract All")
+- Open the extracted folder
+- You should see folders like `lab-01-nyc-neighborhood-signals`, `scripts`, etc.
+- **If you see another folder with the same name inside, go into that one!**
+
+Then copy the path:
+- Click on the **address bar** at the top
+- Press `Ctrl + C` to copy it
 - In PowerShell, type `cd ` (with a space after it)
 - Right-click to paste the path
 - Press `Enter`
 
-Example (your path will be different):
+**3. Check you're in the right folder**
+
+Run this command:
 ```powershell
-cd C:\Users\YourName\Downloads\labs
+dir scripts
 ```
 
-**3. Run the Doctor**
+You should see `windows-setup.ps1`. If you see "Cannot find path", you're in the wrong folder - go one level deeper.
 
-Copy and paste this command, then press `Enter`:
+**4. Run the Doctor**
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
 ```
 
-**4. The Doctor will automatically:**
+**5. The Doctor will automatically:**
 - Check what's missing (Python, uv, Git)
 - Ask you to install each missing item (just press `Enter` or type `Y`)
 - Install it for you using winget
