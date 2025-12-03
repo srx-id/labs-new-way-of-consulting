@@ -473,7 +473,11 @@ function Show-Summary {
 function Show-NextSteps {
     param([bool]$HasMake)
 
-    Write-Header "Next Steps"
+    Write-Header "Next Steps - IMPORTANT!"
+
+    Write-Color "DO NOT run setup here in the root folder!" "Yellow"
+    Write-Color "Each lab is a separate project. Go into a lab folder first!" "Yellow"
+    Write-Info ""
 
     Write-Info "1. Go to a lab folder:"
     Write-Color "   cd lab-01-nyc-neighborhood-signals" "Green"
